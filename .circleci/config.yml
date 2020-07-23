@@ -246,7 +246,19 @@ commands:
       - run:
           name: Check for changed and untracked files
           command: ./scripts/changed-files.sh
-
+  setup_docker_signing:
+    steps:
+      - run:
+          name: Setup docker setup_docker_signing
+          command: |
+            set -x
+            #echo 'export DOCKER_CONTENT_TRUST=1' >> $BASH_ENV
+            echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE="${DOCKERHUB_KEY_PASSWORD}"
+            echo 'export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE='"${DOCKERHUB_KEY_PASSWORD}" >> $BASH_ENV
+            echo ${DOCKERHUB_KEY_MATERIAL} | base64 -d > ~/delegation.key
+            chmod 600 ~/delegation.key
+            docker trust key load ~/delegation.key --name libradevinfra
 jobs:
   prefetch-crates:
     executor: audit-executor
@@ -577,6 +589,7 @@ jobs:
     description: publish docker images
     steps:
       - checkout
+      - setup_docker_signing
       - run:
           name: should pre build docker images (targeting a release branch)?
           command: |
@@ -616,6 +629,7 @@ jobs:
     description: publish docker images
     steps:
       - checkout
+      - setup_docker_signing
       - run:
           name: pull pre images (or build if not pullable) and push release docker images
           command: |
